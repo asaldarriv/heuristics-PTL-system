@@ -3,7 +3,7 @@ import random
 from typing import Dict, Tuple, List
 
 # Name of the file with the problem instance
-INSTANCE_NAME = 'Data_60_Salidas_composición_zonas_homogéneas.xlsx'
+INSTANCE_NAME = 'Data_40_Salidas_composición_zonas_heterogéneas.xlsx'
 
 def load_data(instance_name: str) -> Tuple[List[str], List[str], List[str], List[str], float, Dict[Tuple[str, str], int], Dict[Tuple[str, str], int], Dict[Tuple[str, str], float], Dict[Tuple[str, str], float], Dict[str, int]]:
     # Load the Excel file
@@ -35,28 +35,28 @@ def load_data(instance_name: str) -> Tuple[List[str], List[str], List[str], List
 
     return P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im, ns_j
 
-def deterministic_method_minimize_avg_time(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], float]:
+def deterministic_method_nearest_neighbor(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float]]:
     assignments = {}
     load_zones = {zone: 0 for zone in Z_j}  # Initialize load per zone
     remaining_exits = S_k.copy()  # Exits to be assigned
-
+    
+    # Sort orders by the number of SKUs in descending order (highest first)
+    sorted_orders = sorted(P_i, key=lambda order: sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1), reverse=True)
+    
     for order in P_i:
-        # Find the zone with the least workload that has available exits
-        available_zones = [z for z in Z_j if any(s_jk.get((z, k), 0) == 1 for k in remaining_exits)]
-        if not available_zones:
-            continue
-        selected_zone = min(available_zones, key=lambda z: load_zones[z])
-        
-        # Find the nearest available exit in the selected zone
-        available_exits = [k for k in remaining_exits if s_jk.get((selected_zone, k), 0) == 1]
+        # Find the nearest available exit, regardless of the zone
+        available_exits = [(j, k) for j in Z_j for k in remaining_exits if s_jk.get((j, k), 0) == 1]
         if not available_exits:
             continue
-        selected_exit = min(available_exits, key=lambda k: d_jk[selected_zone, k])
+        
+        # Apply nearest neighbor rule
+        selected_zone, selected_exit = min(available_exits, key=lambda jk: d_jk[jk])
         remaining_exits.remove(selected_exit)  # Mark exit as assigned
         
         # Calculate classification time
+        num_skus = sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1)  # Count SKUs in the order
         classification_time = sum(tr_im[order, sku] for sku in R_m if rp_im.get((order, sku), 0) == 1)
-        classification_time += 2 * (d_jk[selected_zone, selected_exit] / v)
+        classification_time += num_skus * 2 * (d_jk[selected_zone, selected_exit] / v)  # Apply travel time per SKU
         
         # Save assignment
         assignments[order] = (selected_zone, selected_exit, classification_time)
@@ -130,33 +130,33 @@ def deterministic_method_minimize_maximum_time(P_i: List[str], Z_j: List[str], S
     return assignments, load_zones
 
 
-# def randomized_method(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float]]:
-#     assignments = {}
-#     load_zones = {zone: 0 for zone in Z_j}  # Initialize load per zone
-#     random_orders = random.sample(P_i, len(P_i))  # Random order of orders
+def randomized_method(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float]]:
+    assignments = {}
+    load_zones = {zone: 0 for zone in Z_j}  # Initialize load per zone
+    random_orders = random.sample(P_i, len(P_i))  # Random order of orders
     
-#     for order in random_orders:
-#         # Select a zone with inverse probability to its load
-#         zones_prob = sorted(Z_j, key=lambda z: load_zones[z])
-#         selected_zone = random.choices(zones_prob, weights=[1/load_zones[z] if load_zones[z] > 0 else 1 for z in zones_prob])[0]
+    for order in random_orders:
+        # Select a zone with inverse probability to its load
+        zones_prob = sorted(Z_j, key=lambda z: load_zones[z])
+        selected_zone = random.choices(zones_prob, weights=[1/load_zones[z] if load_zones[z] > 0 else 1 for z in zones_prob])[0]
         
-#         # Select a random exit in the zone that has not been assigned yet, prioritizing the nearest ones
-#         assigned_exits = {assignment[1] for assignment in assignments.values()}
-#         available_exits = [k for k in S_k if s_jk.get((selected_zone, k), 0) == 1 and k not in assigned_exits]
-#         if not available_exits:
-#             continue  # Skip if no available exits in the selected zone
+        # Select a random exit in the zone that has not been assigned yet, prioritizing the nearest ones
+        assigned_exits = {assignment[1] for assignment in assignments.values()}
+        available_exits = [k for k in S_k if s_jk.get((selected_zone, k), 0) == 1 and k not in assigned_exits]
+        if not available_exits:
+            continue  # Skip if no available exits in the selected zone
         
-#         selected_exit = random.choices(available_exits, weights=[1/d_jk[selected_zone, k] for k in available_exits])[0]
+        selected_exit = random.choices(available_exits, weights=[1/d_jk[selected_zone, k] for k in available_exits])[0]
         
-#         # Calculate classification time
-#         classification_time = sum(tr_im[order, sku] for sku in R_m if rp_im.get((order, sku), 0) == 1)
-#         classification_time += 2 * (d_jk[selected_zone, selected_exit] / v)
+        # Calculate classification time
+        classification_time = sum(tr_im[order, sku] for sku in R_m if rp_im.get((order, sku), 0) == 1)
+        classification_time += 2 * (d_jk[selected_zone, selected_exit] / v)
         
-#         # Save assignment
-#         assignments[order] = (selected_zone, selected_exit, classification_time)
-#         load_zones[selected_zone] += classification_time
+        # Save assignment
+        assignments[order] = (selected_zone, selected_exit, classification_time)
+        load_zones[selected_zone] += classification_time
     
-#     return assignments, load_zones
+    return assignments, load_zones
 
 def save_results(assignments: Dict[str, Tuple[str, str, float]], load_zones: Dict[str, float], filename: str, instance_name: str):
     # Create DataFrame for the "Resumen" sheet
@@ -193,14 +193,17 @@ def save_results(assignments: Dict[str, Tuple[str, str, float]], load_zones: Dic
 def main():
     P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im, ns_j = load_data(INSTANCE_NAME)
     
-    deterministic_assignments, deterministic_load_zones = deterministic_method_minimize_avg_time(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
-    save_results(deterministic_assignments, deterministic_load_zones, 'solution_constructive_method_minimize_avg_time.xlsx', INSTANCE_NAME)
+    deterministic_assignments, deterministic_load_zones = deterministic_method_nearest_neighbor(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
+    save_results(deterministic_assignments, deterministic_load_zones, f'solution_not_sorted_{INSTANCE_NAME}', INSTANCE_NAME)
 
-    deterministic_assignments, deterministic_load_zones = deterministic_method_minimize_difference(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
-    save_results(deterministic_assignments, deterministic_load_zones, 'solution_constructive_method_minimize_difference.xlsx', INSTANCE_NAME)
+    # deterministic_assignments, deterministic_load_zones = randomized_method(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
+    # save_results(deterministic_assignments, deterministic_load_zones, 'solution_randomized_method.xlsx', INSTANCE_NAME)
 
-    deterministic_assignments, deterministic_load_zones = deterministic_method_minimize_maximum_time(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
-    save_results(deterministic_assignments, deterministic_load_zones, 'solution_constructive_method_minimize_maximum_time.xlsx', INSTANCE_NAME)
+    # deterministic_assignments, deterministic_load_zones = deterministic_method_minimize_difference(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
+    # save_results(deterministic_assignments, deterministic_load_zones, 'solution_constructive_method_minimize_difference.xlsx', INSTANCE_NAME)
+
+    # deterministic_assignments, deterministic_load_zones = deterministic_method_minimize_maximum_time(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
+    # save_results(deterministic_assignments, deterministic_load_zones, 'solution_constructive_method_minimize_maximum_time.xlsx', INSTANCE_NAME)
     
     # randomized_assignments, randomized_load_zones = randomized_method(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
     # save_results(randomized_assignments, randomized_load_zones, 'solution_randomized_method.xlsx', INSTANCE_NAME)
