@@ -8,7 +8,7 @@ This repository contains tools to solve a PTL (Put-To-Light) system using differ
 
 ## Available Heuristic Methods
 
-1. [constructive-method](./constructive-method/README.md)
+1. [Constructive method](./constructive-method/README.md)
 
 ## Getting Started
 
