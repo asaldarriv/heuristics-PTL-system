@@ -1,11 +1,19 @@
-import pandas as pd
+import os
 import random
+import pandas as pd
 from typing import Dict, Tuple, List
 
 # Name of the file with the problem instance
-INSTANCE_NAME = 'Data_40_Salidas_composición_zonas_heterogéneas.xlsx'
-
-def load_data(instance_name: str) -> Tuple[List[str], List[str], List[str], List[str], float, Dict[Tuple[str, str], int], Dict[Tuple[str, str], int], Dict[Tuple[str, str], float], Dict[Tuple[str, str], float], Dict[str, int]]:
+INSTANCES_LIST = [
+    'Data_40_Salidas_composición_zonas_heterogéneas.xlsx', 
+    'Data_40_Salidas_composición_zonas_homogéneas.xlsx', 
+    # 'Data_60_Salidas_composición_zonas_heterogéneas.xlsx', -- Contains 64 exits and 60 orders
+    'Data_60_Salidas_composición_zonas_homogéneas.xlsx',
+    'Data_80_Salidas_composición_zonas_heterogéneas.xlsx',
+    'Data_80_Salidas_composición_zonas_homogéneas.xlsx',
+    ]
+    
+def load_data(instance_name: str) -> Tuple[List[str], List[str], List[str], List[str], float, Dict[Tuple[str, str], int], Dict[Tuple[str, str], int], Dict[Tuple[str, str], float], Dict[Tuple[str, str], float]]:
     # Load the Excel file
     excel_model = pd.ExcelFile(f'instances-ptl/{instance_name}')
 
@@ -24,18 +32,22 @@ def load_data(instance_name: str) -> Tuple[List[str], List[str], List[str], List
     rp_im_dataframe = pd.read_excel(excel_model, 'SKU_pertenece_pedido', index_col=0)
     d_jk_dataframe = pd.read_excel(excel_model, 'Tiempo_salida', index_col=0)
     tr_im_dataframe = pd.read_excel(excel_model, 'Tiempo_SKU', index_col=0)
-    ns_j_dataframe = pd.read_excel(excel_model, 'Salidas_en_cada_zona', index_col=0)
 
     # Convert to appropriate data structures
     s_jk: Dict[Tuple[str, str], int] = {(j, k): s_jk_dataframe.at[j, k] for k in S_k for j in Z_j}
     rp_im: Dict[Tuple[str, str], int] = {(i, m): rp_im_dataframe.at[i, m] for m in R_m for i in P_i}
     d_jk: Dict[Tuple[str, str], float] = {(j, k): d_jk_dataframe.at[j, k] for k in S_k for j in Z_j}
     tr_im: Dict[Tuple[str, str], float] = {(i, m): tr_im_dataframe.at[i, m] for m in R_m for i in P_i}
-    ns_j: Dict[str, int] = ns_j_dataframe.Num_Salidas.to_dict()
 
-    return P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im, ns_j
+    return P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im
 
-def deterministic_method_nearest_neighbor(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float]]:
+def nearest_neighbor_minimize_avg_time(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float]]:
+    """
+    This heuristic minimizes the average classification time across all zones.
+    - Orders are assigned based on the nearest available exit.
+    - The goal is to distribute the workload evenly to minimize the sum of all W_j divided by the number of zones.
+    - Ensures that all orders are assigned to an exit without skipping any.
+    """    
     assignments = {}
     load_zones = {zone: 0 for zone in Z_j}  # Initialize load per zone
     remaining_exits = S_k.copy()  # Exits to be assigned
@@ -43,18 +55,23 @@ def deterministic_method_nearest_neighbor(P_i: List[str], Z_j: List[str], S_k: L
     # Sort orders by the number of SKUs in descending order (highest first)
     sorted_orders = sorted(P_i, key=lambda order: sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1), reverse=True)
     
-    for order in P_i:
-        # Find the nearest available exit, regardless of the zone
-        available_exits = [(j, k) for j in Z_j for k in remaining_exits if s_jk.get((j, k), 0) == 1]
-        if not available_exits:
-            continue
+    for order in sorted_orders:
+        available_zones = [z for z in Z_j if any(s_jk.get((z, k), 0) == 1 and k in remaining_exits for k in S_k)]
+        if not available_zones:
+            raise ValueError("No available zones for assignment. Check instance constraints.")
         
-        # Apply nearest neighbor rule
-        selected_zone, selected_exit = min(available_exits, key=lambda jk: d_jk[jk])
+        # Select the zone that minimizes the average workload impact
+        selected_zone = min(available_zones, key=lambda z: sum(load_zones.values()) / len(Z_j) - load_zones[z])
+        
+        # Find the list of available exits in the selected zone
+        available_exits = [k for k in remaining_exits if s_jk.get((selected_zone, k), 0) == 1]
+        
+        # Find the nearest available exit in the selected zone (nearest neighbor rule)
+        selected_exit = min(available_exits, key=lambda k: d_jk[selected_zone, k])
         remaining_exits.remove(selected_exit)  # Mark exit as assigned
         
         # Calculate classification time
-        num_skus = sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1)  # Count SKUs in the order
+        num_skus = sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1)
         classification_time = sum(tr_im[order, sku] for sku in R_m if rp_im.get((order, sku), 0) == 1)
         classification_time += num_skus * 2 * (d_jk[selected_zone, selected_exit] / v)  # Apply travel time per SKU
         
@@ -64,64 +81,39 @@ def deterministic_method_nearest_neighbor(P_i: List[str], Z_j: List[str], S_k: L
     
     return assignments, load_zones
 
-def deterministic_method_minimize_difference(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], float]:
+def nearest_neighbor_minimize_difference_time(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float]]:
+    """
+    This heuristic minimizes the difference between max and min classification time (W_max - W_min).
+    - Orders are assigned to the zone that balances the max-min workload difference.
+    - Uses the nearest neighbor rule for exit selection.
+    - Ensures that all orders are assigned to an exit without skipping any.
+    """    
     assignments = {}
     load_zones = {zone: 0 for zone in Z_j}  # Initialize load per zone
     remaining_exits = S_k.copy()  # Exits to be assigned
-
-    for order in P_i:
-        # Select the zone that minimizes the difference between max and min workloads
-        selected_zone = min(load_zones, key=lambda z: max(load_zones.values()) - load_zones[z])
+    
+    # Sort orders by the number of SKUs in descending order (highest first)
+    sorted_orders = sorted(P_i, key=lambda order: sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1), reverse=True)
+    
+    for order in sorted_orders:
+        available_zones = [z for z in Z_j if any(s_jk.get((z, k), 0) == 1 and k in remaining_exits for k in S_k)]
+        if not available_zones:
+            raise ValueError("No available zones for assignment. Check instance constraints.")
         
-        # Find the nearest available exit in the selected zone
+        # Select the zone that minimizes W_max - W_min
+        selected_zone = min(available_zones, key=lambda z: max(load_zones.values()) - min(load_zones.values()) + load_zones[z])
+        
+        # Find the list of available exits in the selected zone
         available_exits = [k for k in remaining_exits if s_jk.get((selected_zone, k), 0) == 1]
-        if not available_exits:
-            continue
+        
+        # Find the nearest available exit in the selected zone (nearest neighbor rule)
         selected_exit = min(available_exits, key=lambda k: d_jk[selected_zone, k])
         remaining_exits.remove(selected_exit)  # Mark exit as assigned
         
         # Calculate classification time
+        num_skus = sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1)
         classification_time = sum(tr_im[order, sku] for sku in R_m if rp_im.get((order, sku), 0) == 1)
-        classification_time += 2 * (d_jk[selected_zone, selected_exit] / v)
-        
-        # Save assignment
-        assignments[order] = (selected_zone, selected_exit, classification_time)
-        load_zones[selected_zone] += classification_time
-    
-    # Compute the difference between max and min workload
-    time_difference = max(load_zones.values()) - min(load_zones.values())
-    
-    return assignments, load_zones
-
-def deterministic_method_minimize_maximum_time(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], float]:
-    assignments = {}
-    load_zones = {zone: 0 for zone in Z_j}  # Initialize load per zone
-    remaining_exits = S_k.copy()  # Exits to be assigned
-    unassigned_orders = set(P_i)  # Keep track of unassigned orders
-
-    while unassigned_orders:
-        order = unassigned_orders.pop()
-        
-        # Find the zone that has the lowest max workload impact
-        selected_zone = min(load_zones, key=lambda z: max(load_zones.values()) - load_zones[z])
-        
-        # Find the nearest available exit in the selected zone
-        available_exits = [k for k in remaining_exits if s_jk.get((selected_zone, k), 0) == 1]
-        
-        if not available_exits:
-            # If no available exits in the selected zone, search in another zone
-            alternative_zones = [z for z in Z_j if any(s_jk.get((z, k), 0) == 1 for k in remaining_exits)]
-            if not alternative_zones:
-                raise ValueError("No available exits remaining for some orders. Check input consistency.")
-            selected_zone = min(alternative_zones, key=lambda z: load_zones[z])
-            available_exits = [k for k in remaining_exits if s_jk.get((selected_zone, k), 0) == 1]
-        
-        selected_exit = min(available_exits, key=lambda k: d_jk[selected_zone, k])
-        remaining_exits.remove(selected_exit)  # Mark exit as assigned
-        
-        # Calculate classification time
-        classification_time = sum(tr_im[order, sku] for sku in R_m if rp_im.get((order, sku), 0) == 1)
-        classification_time += 2 * (d_jk[selected_zone, selected_exit] / v)
+        classification_time += num_skus * 2 * (d_jk[selected_zone, selected_exit] / v)  # Apply travel time per SKU
         
         # Save assignment
         assignments[order] = (selected_zone, selected_exit, classification_time)
@@ -129,28 +121,32 @@ def deterministic_method_minimize_maximum_time(P_i: List[str], Z_j: List[str], S
     
     return assignments, load_zones
 
-
-def randomized_method(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float]]:
+def nearest_neighbor_minimize_max_time(P_i: List[str], Z_j: List[str], S_k: List[str], R_m: List[str], v: float, s_jk: Dict[Tuple[str, str], int], rp_im: Dict[Tuple[str, str], int], d_jk: Dict[Tuple[str, str], float], tr_im: Dict[Tuple[str, str], float]) -> Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float]]:
+    """
+    This heuristic minimizes the maximum classification time (W_max).
+    - Orders are assigned to the zone with the least impact on the current max workload.
+    - Uses the nearest neighbor rule for exit selection.
+    - Ensures that all orders are assigned to an exit without skipping any.
+    """    
     assignments = {}
     load_zones = {zone: 0 for zone in Z_j}  # Initialize load per zone
-    random_orders = random.sample(P_i, len(P_i))  # Random order of orders
+    remaining_exits = S_k.copy()  # Exits to be assigned
     
-    for order in random_orders:
-        # Select a zone with inverse probability to its load
-        zones_prob = sorted(Z_j, key=lambda z: load_zones[z])
-        selected_zone = random.choices(zones_prob, weights=[1/load_zones[z] if load_zones[z] > 0 else 1 for z in zones_prob])[0]
-        
-        # Select a random exit in the zone that has not been assigned yet, prioritizing the nearest ones
-        assigned_exits = {assignment[1] for assignment in assignments.values()}
-        available_exits = [k for k in S_k if s_jk.get((selected_zone, k), 0) == 1 and k not in assigned_exits]
-        if not available_exits:
-            continue  # Skip if no available exits in the selected zone
-        
-        selected_exit = random.choices(available_exits, weights=[1/d_jk[selected_zone, k] for k in available_exits])[0]
+    # Sort orders by the number of SKUs in descending order (highest first)
+    sorted_orders = sorted(P_i, key=lambda order: sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1), reverse=True)
+    
+    for order in sorted_orders:
+        # Find the nearest available exit in all zones
+        selected_exit, selected_zone = min(
+            ((k, z) for k in remaining_exits for z in Z_j if s_jk.get((z, k), 0) == 1),
+            key=lambda kz: d_jk[kz[1], kz[0]]
+        )
+        remaining_exits.remove(selected_exit)  # Mark exit as assigned
         
         # Calculate classification time
+        num_skus = sum(1 for sku in R_m if rp_im.get((order, sku), 0) == 1)
         classification_time = sum(tr_im[order, sku] for sku in R_m if rp_im.get((order, sku), 0) == 1)
-        classification_time += 2 * (d_jk[selected_zone, selected_exit] / v)
+        classification_time += num_skus * 2 * (d_jk[selected_zone, selected_exit] / v)  # Apply travel time per SKU
         
         # Save assignment
         assignments[order] = (selected_zone, selected_exit, classification_time)
@@ -162,10 +158,6 @@ def save_results(assignments: Dict[str, Tuple[str, str, float]], load_zones: Dic
     # Create DataFrame for the "Resumen" sheet
     max_load_zone = max(load_zones, key=load_zones.get)
     # Calculate average load time per zone
-    avg_load_zone = sum(load_zones.values()) / len(load_zones)
-    print(f"Results for {filename}: ")
-    print(f"Max load zone: {max_load_zone}: {load_zones[max_load_zone]}")
-    print(f"Average load time per zone: {avg_load_zone}")
     resumen_df = pd.DataFrame({
         'Instancia': [instance_name],
         'Zona': [max_load_zone],
@@ -184,29 +176,119 @@ def save_results(assignments: Dict[str, Tuple[str, str, float]], load_zones: Dic
         'Tiempo': list(load_zones.values())
     })
 
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
     # Save to an Excel file with multiple sheets
     with pd.ExcelWriter(filename) as writer:
         resumen_df.to_excel(writer, sheet_name='Resumen', index=False)
         solucion_df.to_excel(writer, sheet_name='Solucion', index=False)
         metricas_df.to_excel(writer, sheet_name='Metricas', index=False)
 
+def save_comparative_results(writer: pd.ExcelWriter, assignments: Dict[str, Tuple[str, str, float]], load_zones: Dict[str, float], instance_name: str, method_name: str):
+    # Create DataFrame for the "Resumen" sheet
+    max_load_zone = max(load_zones, key=load_zones.get)
+    avg_load = sum(load_zones.values()) / len(load_zones)
+    min_load = min(load_zones.values())
+    max_load = load_zones[max_load_zone]
+    diff_load = max_load - min_load
+
+    resumen_df = pd.DataFrame({
+        'Instancia': [instance_name],
+        'Metodo': [method_name],
+        'Zona': [max_load_zone],
+        'Maximo': [max_load],
+        'Promedio': [avg_load],
+        'Diferencia': [diff_load]
+    })
+
+    # Create DataFrame for the "Solucion" sheet
+    solucion_df = pd.DataFrame({
+        'Instancia': [instance_name] * len(assignments),
+        'Metodo': [method_name] * len(assignments),
+        'Pedido': list(assignments.keys()),
+        'Salida': [assignments[order][1] for order in assignments]
+    })
+
+    # Create DataFrame for the "Metricas" sheet
+    metricas_df = pd.DataFrame({
+        'Instancia': [instance_name] * len(load_zones),
+        'Metodo': [method_name] * len(load_zones),
+        'Zona': list(load_zones.keys()),
+        'Tiempo': list(load_zones.values())
+    })
+
+    # Append data to the Excel file
+    resumen_df.to_excel(writer, sheet_name='Resumen', index=False, header=writer.sheets['Resumen'].max_row == 0, startrow=writer.sheets['Resumen'].max_row)
+    solucion_df.to_excel(writer, sheet_name='Solucion', index=False, header=writer.sheets['Solucion'].max_row == 0, startrow=writer.sheets['Solucion'].max_row)
+    metricas_df.to_excel(writer, sheet_name='Metricas', index=False, header=writer.sheets['Metricas'].max_row == 0, startrow=writer.sheets['Metricas'].max_row)
+
+def verify_solution(assignments: Dict[str, Tuple[str, str, float]], load_zones: Dict[str, float], P_i: List[str], Z_j: List[str], S_k: List[str]) -> bool:
+    """
+    Verifies the solution of the heuristic methods.
+    
+    - For assignments, checks if the length is equal to the length of P_i and S_k.
+    - Ensures no element in assignments[0] or assignments[1] is repeated.
+    - For load_zones, checks if the length is equal to the length of Z_j.
+    
+    Returns True if all conditions are met, raises an error otherwise.
+    """
+    # Check if the length of assignments is equal to the length of P_i
+    if len(assignments) != len(P_i):
+        raise ValueError("The number of assignments does not match the number of orders.")
+    
+    # Check if the length of assignments is equal to the length of S_k
+    if len(assignments) != len(S_k):
+        raise ValueError("The number of assignments does not match the number of exits.")
+    
+    # Check for duplicate elements in orders and assignments[1]
+    orders = list(assignments.keys())
+    assigned_exits = [assignment[1] for assignment in assignments.values()]
+     
+    if len(orders) != len(set(orders)):
+        raise ValueError("Duplicate zones found in assignments.")
+    
+    if len(assigned_exits) != len(set(assigned_exits)):
+        raise ValueError("Duplicate exits found in assignments.")
+    
+    # Check if the length of load_zones is equal to the length of Z_j
+    if len(load_zones) != len(Z_j):
+        raise ValueError("The number of load zones does not match the number of zones.")
+    
+    return True
+
 def main():
-    P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im, ns_j = load_data(INSTANCE_NAME)
-    
-    deterministic_assignments, deterministic_load_zones = deterministic_method_nearest_neighbor(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
-    save_results(deterministic_assignments, deterministic_load_zones, f'solution_not_sorted_{INSTANCE_NAME}', INSTANCE_NAME)
+    output_dir = 'constructive-method/solutions'
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = f'{output_dir}/comparative_results.xlsx'
 
-    # deterministic_assignments, deterministic_load_zones = randomized_method(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
-    # save_results(deterministic_assignments, deterministic_load_zones, 'solution_randomized_method.xlsx', INSTANCE_NAME)
+    with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+        # Create empty sheets with headers
+        pd.DataFrame(columns=['Instancia', 'Metodo', 'Zona', 'Maximo', 'Promedio', 'Diferencia']).to_excel(writer, sheet_name='Resumen', index=False)
+        pd.DataFrame(columns=['Instancia', 'Metodo', 'Pedido', 'Salida']).to_excel(writer, sheet_name='Solucion', index=False)
+        pd.DataFrame(columns=['Instancia', 'Metodo', 'Zona', 'Tiempo']).to_excel(writer, sheet_name='Metricas', index=False)
 
-    # deterministic_assignments, deterministic_load_zones = deterministic_method_minimize_difference(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
-    # save_results(deterministic_assignments, deterministic_load_zones, 'solution_constructive_method_minimize_difference.xlsx', INSTANCE_NAME)
+        # Iterate over all instances
+        for instance_name in INSTANCES_LIST:
+            P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im = load_data(instance_name)
+            
+            # Save results for nearest_neighbor_minimize_avg_time
+            deterministic_assignments, deterministic_load_zones = nearest_neighbor_minimize_avg_time(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
+            if verify_solution(deterministic_assignments, deterministic_load_zones, P_i, Z_j, S_k):
+                save_results(deterministic_assignments, deterministic_load_zones, f'{output_dir}/{instance_name}_nearest_neighbor_minimize_avg_time.xlsx', instance_name)
+                save_comparative_results(writer, deterministic_assignments, deterministic_load_zones, instance_name, 'nearest_neighbor_minimize_avg_time')
 
-    # deterministic_assignments, deterministic_load_zones = deterministic_method_minimize_maximum_time(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
-    # save_results(deterministic_assignments, deterministic_load_zones, 'solution_constructive_method_minimize_maximum_time.xlsx', INSTANCE_NAME)
-    
-    # randomized_assignments, randomized_load_zones = randomized_method(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
-    # save_results(randomized_assignments, randomized_load_zones, 'solution_randomized_method.xlsx', INSTANCE_NAME)
+            # Save results for nearest_neighbor_minimize_difference_time
+            deterministic_assignments, deterministic_load_zones = nearest_neighbor_minimize_difference_time(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
+            if verify_solution(deterministic_assignments, deterministic_load_zones, P_i, Z_j, S_k):
+                save_results(deterministic_assignments, deterministic_load_zones, f'{output_dir}/{instance_name}_nearest_neighbor_minimize_difference_time.xlsx', instance_name)
+                save_comparative_results(writer, deterministic_assignments, deterministic_load_zones, instance_name, 'nearest_neighbor_minimize_difference_time')
+
+            # Save results for nearest_neighbor_minimize_max_time
+            deterministic_assignments, deterministic_load_zones = nearest_neighbor_minimize_max_time(P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, tr_im)
+            if verify_solution(deterministic_assignments, deterministic_load_zones, P_i, Z_j, S_k):
+                save_results(deterministic_assignments, deterministic_load_zones, f'{output_dir}/{instance_name}_nearest_neighbor_minimize_max_time.xlsx', instance_name)
+                save_comparative_results(writer, deterministic_assignments, deterministic_load_zones, instance_name, 'nearest_neighbor_minimize_max_time')
 
 if __name__ == "__main__":
     main()
