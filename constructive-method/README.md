@@ -4,8 +4,8 @@ This project implements a constructive method, specifically the nearest neighbor
 
 ## Description
 
-- **Deterministic Method**: Orders are sorted in descending order by the number of SKUs. Once the order is determined, each order is assigned to the nearest exit.
-- **Randomized Method**: Orders are sorted randomly. Once the order is determined, each order is assigned to the nearest exit.
+- **Deterministic Method**: orders are sorted in descending order by the number of SKUs. Once the order is determined, each order is assigned to the nearest exit.
+- **Randomized Method**: orders are sorted randomly. Once the order is determined, each order is assigned to the nearest exit.
 
 ## Running the Algorithm
 
@@ -44,8 +44,8 @@ This project implements a constructive method, specifically the nearest neighbor
 
     After running the algorithm, the results are stored in several folders:
 
-    - **solutions**: Contains an Excel file for each instance/method.
-    - **reports**: Contains an Excel file comparing the results of different methods and instances, as well as an image comparing the workload distribution across zones.
-    - **bar_images**: Contains bar charts showing the workload balance for each instance/method.
+    - **solutions**: contains an Excel file for each instance/method.
+    - **reports**: contains an Excel file comparing the results of different methods and instances, as well as an image comparing the workload distribution across zones.
+    - **bar_images**: contains bar charts showing the workload balance for each instance/method.
 
     These files provide a detailed analysis of the performance and efficiency of the different methods applied to the instances.
