@@ -4,7 +4,7 @@ from typing import Dict, Tuple, List
 
 from utils import evaluate_solution
 
-def nearest_neighbor_minimize_avg_time(
+def nearest_neighbor_minimize_difference_time(
         P_i: List[str], 
         Z_j: List[str], 
         S_k: List[str], 
@@ -20,7 +20,7 @@ def nearest_neighbor_minimize_avg_time(
             float
         ]:
     """
-    This heuristic minimizes the average classification time across all zones.
+    This heuristic minimizes the difference time between Wmax and Wmin.
     - Orderds are sorted initially.
     - Orders are assigned to the zone with the least workload.
     - Uses the nearest neighbor rule for exit selection.
@@ -41,7 +41,7 @@ def nearest_neighbor_minimize_avg_time(
         if not available_zones:
             raise ValueError("No available zones for assignment. Check instance constraints.")
         
-        # Select the zone with the least workload to balance the average time across zones
+        # Select the zone with the least workload to balance the Wmax-Wmin difference
         selected_zone = min(available_zones, key=lambda z: load_zones[z])
         
         # Find the list of available exits in the selected zone
@@ -64,7 +64,7 @@ def nearest_neighbor_minimize_avg_time(
 
     return assignments, load_zones, execution_time
 
-def nearest_neighbor_minimize_avg_time_randomized(
+def nearest_neighbor_minimize_difference_time_randomized(
         P_i: List[str], 
         Z_j: List[str], 
         S_k: List[str], 
@@ -81,7 +81,7 @@ def nearest_neighbor_minimize_avg_time_randomized(
             float
         ]:
     """
-    This heuristic minimizes the average classification time across all zones.
+    This heuristic minimizes the difference time between Wmax and Wmin.
     - Orderds are randomized initially.
     - Orders are assigned to the zone with the least workload.
     - Uses the nearest neighbor rule for exit selection.

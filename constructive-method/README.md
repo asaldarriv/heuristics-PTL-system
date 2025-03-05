@@ -11,7 +11,7 @@ This project implements a constructive method, specifically the nearest neighbor
 
 ### Requirements
 
-- Python 3.11
+- Python 3.11.3
 
 ### Instructions for Windows
 
