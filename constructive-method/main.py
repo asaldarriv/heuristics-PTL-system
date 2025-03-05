@@ -3,7 +3,7 @@ import os
 from data_loader import load_data
 from generate_report import generate_report
 from utils import save_results, verify_solution
-from heuristics import nearest_neighbor_minimize_difference_time, nearest_neighbor_minimize_difference_time_randomized
+from heuristics import nearest_neighbor_minimize_max_workload_time, nearest_neighbor_minimize_max_workload_time_randomized
 
 INSTANCES_LIST = [
     '40_homogeneous.xlsx', 
