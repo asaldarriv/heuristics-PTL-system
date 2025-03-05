@@ -11,9 +11,6 @@ def verify_solution(assignments: Dict[str, Tuple[str, str, float]], load_zones: 
     if len(assignments) != len(P_i):
         raise ValueError("The number of assignments does not match the number of orders.")
     
-    if len(assignments) != len(S_k):
-        raise ValueError("The number of assignments does not match the number of exits.")
-    
     orders = list(assignments.keys())
     assigned_exits = [assignment[1] for assignment in assignments.values()]
      

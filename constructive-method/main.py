@@ -6,12 +6,12 @@ from utils import save_results, verify_solution
 from heuristics import nearest_neighbor_minimize_difference_time, nearest_neighbor_minimize_difference_time_randomized
 
 INSTANCES_LIST = [
-    '40_heterogeneous.xlsx', 
     '40_homogeneous.xlsx', 
+    '40_heterogeneous.xlsx', 
     '60_homogeneous.xlsx',
-    # '60_heterogeneous.xlsx', -- This instance contains 64 exits and 60 orders. Is this an error?
-    '80_heterogeneous.xlsx',
+    '60_heterogeneous.xlsx',
     '80_homogeneous.xlsx',
+    '80_heterogeneous.xlsx',
 ]
 
 def main():
@@ -32,7 +32,7 @@ def main():
 
         args = (P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, classification_times)
 
-        deterministic_solution = nearest_neighbor_minimize_difference_time(*args)
+        deterministic_solution = nearest_neighbor_minimize_max_workload_time(*args)
         deterministic_assignments = deterministic_solution[0]
         deterministic_load_zones = deterministic_solution[1]
         deterministic_execution_time = deterministic_solution[2]
@@ -40,7 +40,7 @@ def main():
             save_results(deterministic_assignments, deterministic_load_zones, f'{base_route_file}_deterministic.xlsx', instance_name)
             report_data_list.append((deterministic_assignments, deterministic_load_zones, deterministic_execution_time, instance_name, 'deterministic'))
 
-        randomized_solution = nearest_neighbor_minimize_difference_time_randomized(*args, N)
+        randomized_solution = nearest_neighbor_minimize_max_workload_time_randomized(*args, N)
         randomized_assignments = randomized_solution[0]
         randomized_load_zones = randomized_solution[1]
         randomized_execution_time = randomized_solution[2]

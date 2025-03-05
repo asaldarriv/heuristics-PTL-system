@@ -52,14 +52,28 @@ def generate_report(data_list: List[Tuple[Dict[str, Tuple[str, str, float]], Dic
         index = np.arange(len(load_zones_list[0]))
 
         for i, (load_zones, method_name) in enumerate(zip(load_zones_list, method_names)):
-            plt.bar(index + i * bar_width, load_zones.values(), bar_width, label=method_name, color=colors[i])
+            bars = plt.bar(index + i * bar_width, load_zones.values(), bar_width, label=method_name, color=colors[i])
+            for bar in bars:
+                height = bar.get_height()
+                color = bar.get_facecolor()
+                brightness = (0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2])
+                text_color = 'white' if brightness < 0.5 else 'black'
+                plt.text(
+                    bar.get_x() + bar.get_width() / 2.0,
+                    height / 2,
+                    method_name,
+                    ha='center',
+                    va='center',
+                    rotation='vertical',
+                    fontsize=12,
+                    color=text_color
+                )
 
         plt.xlabel('Zones', fontsize=18)
         plt.ylabel('Time [s]', fontsize=18)
         plt.title(f'{instance_name} - Comparison of Methods', fontsize=20)
         plt.xticks(index + bar_width * (len(method_names) - 1) / 2, load_zones.keys(), fontsize=16)
         plt.yticks(fontsize=16)
-        plt.legend(loc='upper left', fontsize=16)
         plt.tight_layout()
 
         # Save the plot as an image
