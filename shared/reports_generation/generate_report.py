@@ -6,7 +6,7 @@ from openpyxl import load_workbook
 from typing import List, Tuple, Dict
 from PIL import Image
 
-def generate_report(data_list: List[Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float], float, str, str]]) -> None:
+def generate_report(data_list: List[Tuple[Dict[str, Tuple[str, str, float]], Dict[str, float], float, str, str]], method: str) -> None:
     """
     Generate a report in Excel with the given data.
     data_list: List of tuples (assignments, load_zones, execution_time, instance_name, method_name)
@@ -77,7 +77,7 @@ def generate_report(data_list: List[Tuple[Dict[str, Tuple[str, str, float]], Dic
         plt.tight_layout()
 
         # Save the plot as an image
-        output_dir = 'constructive_method/reports/bar_images'
+        output_dir = f'{method}_method/reports/bar_images'
         os.makedirs(output_dir, exist_ok=True)
         image_path = f'{output_dir}/{instance_name}_comparison.png'
         plt.savefig(image_path)
@@ -85,7 +85,7 @@ def generate_report(data_list: List[Tuple[Dict[str, Tuple[str, str, float]], Dic
         image_paths.append(image_path)
 
     df = pd.DataFrame(report_data)
-    output_dir = 'constructive_method/reports'
+    output_dir = f'{method}_method/reports'
     os.makedirs(output_dir, exist_ok=True)
     output_file = f'{output_dir}/report.xlsx'
 
