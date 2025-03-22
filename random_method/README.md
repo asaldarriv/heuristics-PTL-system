@@ -1,11 +1,11 @@
-# Constructive Method
+# Random Method
 
-This project implements a constructive method, specifically the nearest neighbor, with two variations of the method: deterministic and randomized.
+This project implements a random method, specifically an evolutionary method (1+1) that uses an initial solution provided by the nearest neighbor method (constructive method) and then improves it by making small mutations.
 
 ## Description
 
-- **Deterministic Method**: orders are sorted in descending order by the number of SKUs. Once the order is determined, each order is assigned to the nearest exit.
-- **Randomized Method**: orders are sorted randomly. Once the order is determined, each order is assigned to the nearest exit.
+- **Deterministic Method (Nearest Neighbor)**: orders are sorted in descending order by the number of SKUs. Once the order is determined, each order is assigned to the nearest exit.
+- **Random Method (Evolutionaty Method (1+1))**: uses an initial solution provided by the nearest neighbor method (constructive method) and then improves it by making small mutations.
 
 ## Running the Algorithm
 
@@ -37,7 +37,7 @@ This project implements a constructive method, specifically the nearest neighbor
 
 5. Run the algorithm:
     ```sh
-    python constructive_method/main.py
+    python random_method/main.py
     ```
 
     ## Results
