@@ -2,7 +2,7 @@ import time
 import random
 from typing import Dict, Tuple, List
 
-from utils import evaluate_solution
+from shared.utils import evaluate_solution
 
 def nearest_neighbor_minimize_max_workload_time(
         P_i: List[str], 

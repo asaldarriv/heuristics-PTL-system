@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 from typing import Dict, Tuple, List
 
@@ -17,7 +16,7 @@ def load_data(instance_name: str) -> Tuple[
     """
     Load data from an Excel file containing the instance model.
     """
-    excel_model = pd.ExcelFile(f'instances-ptl/{instance_name}')
+    excel_model = pd.ExcelFile(f'shared/instances_ptl/{instance_name}')
 
     P_i = list(pd.read_excel(excel_model, 'Pedidos', index_col=0).index)
     Z_j = list(pd.read_excel(excel_model, 'Zonas', index_col=0).index)

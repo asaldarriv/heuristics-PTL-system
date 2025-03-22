@@ -77,7 +77,7 @@ def generate_report(data_list: List[Tuple[Dict[str, Tuple[str, str, float]], Dic
         plt.tight_layout()
 
         # Save the plot as an image
-        output_dir = 'constructive-method/reports/bar_images'
+        output_dir = 'constructive_method/reports/bar_images'
         os.makedirs(output_dir, exist_ok=True)
         image_path = f'{output_dir}/{instance_name}_comparison.png'
         plt.savefig(image_path)
@@ -85,7 +85,7 @@ def generate_report(data_list: List[Tuple[Dict[str, Tuple[str, str, float]], Dic
         image_paths.append(image_path)
 
     df = pd.DataFrame(report_data)
-    output_dir = 'constructive-method/reports'
+    output_dir = 'constructive_method/reports'
     os.makedirs(output_dir, exist_ok=True)
     output_file = f'{output_dir}/report.xlsx'
 
@@ -132,4 +132,4 @@ def generate_report(data_list: List[Tuple[Dict[str, Tuple[str, str, float]], Dic
             x_offset = 0
             y_offset += max_height
 
-    collage.save(f'{output_dir}/comparison-workload-balancing-bar-chart.png')
+    collage.save(f'{output_dir}/comparison_workload_balancing_bar_chart.png')

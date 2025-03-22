@@ -1,8 +1,12 @@
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from data_loader import load_data
-from generate_report import generate_report
-from utils import save_results, verify_solution
+
+from shared.data_loader.data_loader import load_data
+from shared.reports_generation.generate_report import generate_report
+from shared.utils import save_results, verify_solution
+
 from heuristics import nearest_neighbor_minimize_max_workload_time, nearest_neighbor_minimize_max_workload_time_randomized
 
 INSTANCES_LIST = [
@@ -16,7 +20,7 @@ INSTANCES_LIST = [
 
 def main():
     # Creates output directory
-    output_directory = 'constructive-method/solutions'
+    output_directory = 'constructive_method/solutions'
     os.makedirs(output_directory, exist_ok=True)
 
     N = 1000  # Number of iterations for randomized method

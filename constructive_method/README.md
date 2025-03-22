@@ -32,12 +32,12 @@ This project implements a constructive method, specifically the nearest neighbor
 
 4. Install the dependencies:
     ```sh
-    pip install -r constructive-method/requirements.txt
+    pip install -r requirements.txt
     ```
 
 5. Run the algorithm:
     ```sh
-    python constructive-method/main.py
+    python constructive_method/main.py
     ```
 
     ## Results
