@@ -17,6 +17,16 @@ This repository contains tools to solve a PTL (Put-To-Light) system using differ
 2. Go to the cloned repository with `cd heuristics-ptl-system`.
 3. Follow the instructions in the `README.md` file of the heuristic method folder you want to use.
 
+## Analysis
+
+A folder with analysis used to create reports are located in folder "analysis".
+
+## Getting Started
+
+1. Clone this repository (use the command `git clone https://github.com/asaldarriv/heuristics-PTL-system.git`).
+2. Go to the cloned repository with `cd heuristics-ptl-system`.
+3. Follow the instructions in the `README.md` file of the heuristic method folder you want to use.
+
 ## Contributions
 
 Contributions are welcome. Please open an issue or submit a pull request.
