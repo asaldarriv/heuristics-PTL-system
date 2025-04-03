@@ -4,10 +4,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
 from shared.data_loader.data_loader import load_data
-from shared.reports_generation.generate_report import generate_report
 from shared.utils import save_results, verify_solution
+from shared.reports_generation.generate_report import generate_report
 
-from heuristics import nearest_neighbor_minimize_max_workload_time, nearest_neighbor_minimize_max_workload_time_randomized, evolutionary_one_plus_one
+from random_method.heuristics import evolutionary_one_plus_one
+from constructive_method.heuristics import nearest_neighbor_minimize_max_workload_time
 
 INSTANCES_LIST = [
     '40_homogeneous.xlsx', 
