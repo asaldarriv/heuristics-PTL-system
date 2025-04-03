@@ -3,7 +3,7 @@ import sys
 import time
 from openpyxl import Workbook
 import statistics
-from scipy.stats import ttest_1samp, shapiro, f_oneway, mannwhitneyu
+from scipy.stats import ttest_1samp, shapiro, mannwhitneyu
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
@@ -24,8 +24,6 @@ instances = [
 
 n_evolutionary_runs = 30
 evolutionary_max_iterations = 1000
-
-anova_groups = []
 
 wb = Workbook()
 ws = wb.active
@@ -85,9 +83,6 @@ for instance in instances:
 
     print(f"Method comparison p = {p_value:.4f} → {result}")
 
-    # Save for ANOVA
-    anova_groups.append(wmax_evo_list)
-
     # Write to Excel
     ws.append([
         instance,
@@ -99,20 +94,6 @@ for instance in instances:
         round(p_value, 4),
         result
     ])
-
-# --- ANOVA across instances (only evolutionary method) ---
-anova_ws = wb.create_sheet("anova")
-anova_ws.append(['anova_across_instances'])
-
-if len(anova_groups) >= 2:
-    f_stat, p_anova = f_oneway(*anova_groups)
-    anova_ws.append(['F-statistic', f_stat])
-    anova_ws.append(['p-value', p_anova])
-    anova_ws.append(['result', 'significant differences' if p_anova < 0.05 else 'no significant differences'])
-
-    print(f"\n📊 ANOVA p = {p_anova:.4f}")
-else:
-    anova_ws.append(['Insufficient data for ANOVA'])
 
 # Save results
 wb.save("analysis/statistics/statistical_analysis.xlsx")
