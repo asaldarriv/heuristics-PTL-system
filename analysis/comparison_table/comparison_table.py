@@ -14,6 +14,7 @@ from constructive_method.heuristics import (
     nearest_neighbor_minimize_max_workload_time,
     nearest_neighbor_minimize_max_workload_time_randomized
 )
+from local_search_method.heuristics import local_search_vns
 
 # Parameters
 instances_list = [
@@ -29,6 +30,8 @@ n_random_runs = 30
 n_random_iterations = 1000
 n_evolutionary_runs = 30
 evolutionary_max_iterations = 1000
+local_search_max_iterations = 1000
+local_search_max_no_improve = 40
 
 bks_file = 'analysis/find_bks/bks_results.xlsx'
 
@@ -118,7 +121,15 @@ def main():
             {'max_iterations': evolutionary_max_iterations}
         )
 
-        for res in [det_result, rand_result, evo_result]:
+        # Local Search VNS method
+        local_search_result = evaluate_method(
+            'local_search_vns',
+            local_search_vns,
+            args, n_evolutionary_runs,
+            {'max_iterations': local_search_max_iterations, 'max_no_improve': local_search_max_no_improve}
+        )
+
+        for res in [det_result, rand_result, evo_result, local_search_result]:
             gap_wmax = compute_gap(res['mean_wmax'], bks['bks_wmax'])
             gap_wmax_wmin = compute_gap(res['mean_wmax_wmin'], bks['bks_wmax_wmin'])
 
