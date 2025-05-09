@@ -32,6 +32,9 @@ n_evolutionary_runs = 30
 evolutionary_max_iterations = 1000
 local_search_max_iterations = 1000
 local_search_max_no_improve = 40
+local_search_initial_neighborhood_size = 5
+local_search_max_neighborhood_size = 10
+local_search_num_changes = 3
 
 bks_file = 'analysis/find_bks/bks_results.xlsx'
 
@@ -126,7 +129,13 @@ def main():
             'local_search_vns',
             local_search_vns,
             args, n_evolutionary_runs,
-            {'max_iterations': local_search_max_iterations, 'max_no_improve': local_search_max_no_improve}
+            {
+                'max_iterations': local_search_max_iterations,
+                'max_no_improve': local_search_max_no_improve,
+                'initial_neighborhood_size': local_search_initial_neighborhood_size,
+                'max_neighborhood_size': local_search_max_neighborhood_size,
+                'num_changes': local_search_num_changes
+            }
         )
 
         for res in [det_result, rand_result, evo_result, local_search_result]:

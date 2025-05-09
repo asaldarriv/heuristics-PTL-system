@@ -24,6 +24,9 @@ def main():
     os.makedirs(output_directory, exist_ok=True)
 
     N = 1000  # Number of iterations for local search method
+    initial_neighborhood_size = 5  # Initial number of neighbors to generate per iteration
+    max_neighborhood_size = 10  # Maximum neighborhood size
+    num_changes = 3  # Number of changes in the aggressive neighborhood
 
     report_data_list = []
 
@@ -36,6 +39,7 @@ def main():
 
         args = (P_i, Z_j, S_k, R_m, v, s_jk, rp_im, d_jk, classification_times)
 
+        # Deterministic solution
         deterministic_solution = nearest_neighbor_minimize_max_workload_time(*args)
         deterministic_assignments = deterministic_solution[0]
         deterministic_load_zones = deterministic_solution[1]
@@ -44,7 +48,15 @@ def main():
             save_results(deterministic_assignments, deterministic_load_zones, f'{base_route_file}_deterministic.xlsx', instance_name)
             report_data_list.append((deterministic_assignments, deterministic_load_zones, deterministic_execution_time, instance_name, 'deterministic'))
 
-        local_search_solution = local_search_vns(*args, max_iterations=N)
+        # Local Search VNS solution
+        local_search_solution = local_search_vns(
+            *args,
+            max_iterations=N,
+            max_no_improve=40,
+            initial_neighborhood_size=initial_neighborhood_size,
+            max_neighborhood_size=max_neighborhood_size,
+            num_changes=num_changes
+        )
         local_search_assignments = local_search_solution[0]
         local_search_load_zones = local_search_solution[1]
         local_search_execution_time = local_search_solution[2]
